@@ -16,5 +16,5 @@ df = movies.merge(popularity, on='movieId', how='left').fillna(0)
 top_movies = df.sort_values(by='vote_count', ascending=False).head(25000)
 
 # Save directly to your target deployment folder
-top_movies.to_csv("movie_recommender_project/top_movies.csv", index=False)
+top_movies.to_csv("top_movies.csv", index=False)
 print("SUCCESS: 'top_movies.csv' generated securely inside movie_recommender_project/")
