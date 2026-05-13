@@ -1,0 +1,8 @@
+streamlit
+tensorflow
+tensorflow-recommenders
+tensorflow-datasets
+requests
+pandas
+scikit-learn
+numpy
