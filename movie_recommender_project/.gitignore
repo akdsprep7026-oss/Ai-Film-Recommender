@@ -4,3 +4,10 @@ movie_model_index/
 
 # Ensure compiled lightweight archives pass freely
 !movies.csv.gz
+
+# Ignore raw uncompressed datasets
+*.csv
+datasets/
+
+# ALLOW the compiled feature pack required for production
+!movies.csv.gz
