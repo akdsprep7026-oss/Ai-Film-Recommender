@@ -16,29 +16,26 @@ st.markdown("""
 
 @st.cache_data
 def load_and_prep_data():
-    # 1. Load Movies and Ratings (for popularity)
-    m_path = os.path.join("..", "ml-32m", "movies.csv")
-    r_path = os.path.join("..", "ml-32m", "ratings.csv")
+    # 1. Map target execution environments
+    local_path = "ml-32m/movies.csv"
+    parent_path = "../ml-32m/movies.csv"
     
-    # Check local paths if not in parent
-    if not os.path.exists(m_path): m_path = "ml-32m/movies.csv"
-    if not os.path.exists(r_path): r_path = "ml-32m/ratings.csv"
-
-    df = pd.read_csv(m_path)
+    # PASTE YOUR DIRECT CLOUD STORAGE DOWNLOAD URL HERE:
+    cloud_url = "https://your-storage-bucket-url.com/movies.csv"
     
-    # 2. Add Popularity Logic (Crucial for Accuracy)
-    # We load a sample of ratings to calculate 'vote count'
-    try:
-        # Just loading enough to get popularity counts
-        ratings_sample = pd.read_csv(r_path, usecols=['movieId'], nrows=1000000)
-        popularity = ratings_sample['movieId'].value_counts().reset_index()
-        popularity.columns = ['movieId', 'vote_count']
-        df = df.merge(popularity, on='movieId', how='left').fillna(0)
-    except:
-        df['vote_count'] = 0
-
-    # 3. Enhance Metadata (Combining Title + Genres for TF-IDF)
-    # This ensures 'Toy Story 2' is closer to 'Toy Story' than a random animation
+    # 2. Resilient Path Traversal
+    if os.path.exists(local_path):
+        target_source = local_path
+    elif os.path.exists(parent_path):
+        target_source = parent_path
+    else:
+        # Fallback to direct cloud streaming when deployed on Streamlit Cloud
+        target_source = cloud_url
+        
+    # 3. Stream data into memory
+    df = pd.read_csv(target_source)
+    
+    # ... keep your existing vote_count and TF-IDF metadata processing logic here ...
     df['metadata'] = df['title'] + " " + df['genres'].str.replace('|', ' ')
     return df
 
