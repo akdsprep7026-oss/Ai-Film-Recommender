@@ -1,2 +1,6 @@
+# Block raw unpackaged root matrices
 ml-32m/
 movie_model_index/
+
+# Ensure compiled lightweight archives pass freely
+!movies.csv.gz

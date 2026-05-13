@@ -1,12 +1,18 @@
 import os
-import io # Required to convert string byte buffers for Pandas
-import requests
-import streamlit as st
+import numpy as np
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+import streamlit as st
 
-st.set_page_config(page_title="🎬 Pro Movie Discovery", layout="wide")
+# --- PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="🎬 AI Movie Discovery Engine",
+    page_icon="🍿",
+    layout="wide"
+)
 
-# Custom CSS for a dark, modern look
+# Custom CSS for modern styling (compatible with v1.24.0)
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -14,96 +20,116 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- STEP 1: DATA LOADING & PREPARATION ---
 @st.cache_data
 def load_and_prep_data():
-    local_path = "ml-32m/movies.csv"
-    parent_path = "../ml-32m/movies.csv"
+    # Target the container-safe compressed artifact directly
+    target_archive = "movies.csv.gz"
     
-    # Ensure your direct download URL is assigned here:
-    cloud_url = "https://your-storage-bucket-url.com/movies.csv"
+    # Absolute safety check for deployment environment
+    if not os.path.exists(target_archive):
+        # Fallback check just in case you are running from a parent folder locally
+        if os.path.exists(os.path.join("movie_recommender_project", target_archive)):
+            target_archive = os.path.join("movie_recommender_project", target_archive)
+        else:
+            raise FileNotFoundError(
+                f"CRITICAL ERROR: Compiled feature pack '{target_archive}' is missing from the application directory. "
+                "Ensure you have compressed movies.csv to movies.csv.gz and committed it to your repository."
+            )
+            
+    # Load native GZIP compression straight into Pandas memory buffer
+    df = pd.read_csv(target_archive, compression="gzip")
     
-    # 1. Check local execution buffers first
-    if os.path.exists(local_path):
-        df = pd.read_csv(local_path)
-    elif os.path.exists(parent_path):
-        df = pd.read_csv(parent_path)
-    else:
-        # 2. Cloud Fallback: Fetch securely using a simulated browser header
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
-        
-        # Stream the raw payload directly over HTTP
-        response = requests.get(cloud_url, headers=headers)
-        response.raise_for_status() # Guarantee connection success
-        
-        # Read the retrieved string content natively into Pandas
-        df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
-        
-    # 3. Compile metadata vectors
-    try:
-        # Ensure your target rating metrics merge safely if configured
-        pass 
-    except Exception:
+    # Ensure uniform string casting
+    df['title'] = df['title'].astype(str)
+    df['genres'] = df['genres'].astype(str).fillna("Unknown")
+    
+    # Safeguard vote_count metric initialization
+    if 'vote_count' not in df.columns:
         df['vote_count'] = 0
 
-    df['metadata'] = df['title'] + " " + df['genres'].str.replace('|', ' ')
+    # Build composite NLP Vector Space: combine title and parsed genres
+    df['metadata'] = df['title'] + " " + df['genres'].str.replace('|', ' ', regex=False)
     return df
 
+# --- STEP 2: ENGINE COMPILATION ---
 @st.cache_resource
 def build_engine(df):
-    # We use a wider ngram range (1,2) to capture movie series like "Toy Story"
+    # N-Gram range (1,2) ensures phrases like "Toy Story" are mapped as cohesive semantic units
     tfidf = TfidfVectorizer(stop_words='english', ngram_range=(1, 2))
     tfidf_matrix = tfidf.fit_transform(df['metadata'])
     return tfidf_matrix
 
+# --- STEP 3: HYBRID RECOMMENDATION LOGIC ---
 def get_pro_recommendations(title, df, tfidf_matrix):
     try:
+        # Isolate target row index
         idx = df.index[df['title'] == title].tolist()[0]
-        # Compute similarity for this movie against all others
-        # Using linear_kernel is memory efficient for large datasets
+        
+        # Calculate global cosine proximity against all records using an optimized linear kernel
         cosine_sim = linear_kernel(tfidf_matrix[idx], tfidf_matrix).flatten()
         
-        # Create a temp dataframe for ranking
+        # Instantiate candidate scoring dataframe
         temp_df = df.copy()
         temp_df['sim_score'] = cosine_sim
         
-        # --- THE SECRET SAUCE: HYBRID RANKING ---
-        # We multiply similarity by a log of vote_count to favor popular movies
-        # This stops obscure 1975 films from appearing unless they are VERY similar
-        import numpy as np
+        # --- HYBRID RANKING ALGORITHM ---
+        # Scale raw textual similarity by logarithmic interaction density to filter out obscure noise
         temp_df['final_score'] = temp_df['sim_score'] * (np.log1p(temp_df['vote_count']) + 1)
         
-        # Sort and return top 10 (excluding itself)
+        # Drop input candidate and return top 10 sorted outcomes
         recommendations = temp_df[temp_df['title'] != title].sort_values(by='final_score', ascending=False)
         return recommendations.head(10)
-    except:
+    except Exception:
         return None
 
-# --- MAIN UI ---
-df = load_and_prep_data()
-tfidf_matrix = build_engine(df)
-
-st.title("🎬 AI Movie Discovery Engine")
-st.caption("Hybrid Engine: TF-IDF + Popularity Weighted Ranking")
-
-selected_movie = st.selectbox("Search a movie you love:", ["-- Select --"] + list(df['title'].values))
-
-if selected_movie != "-- Select --":
-    results = get_pro_recommendations(selected_movie, df, tfidf_matrix)
+# --- MAIN INTERFACE RENDERING ---
+def main():
+    st.title("🎬 AI Movie Discovery Engine")
+    st.caption("Hybrid Recommender: TF-IDF Semantic Proximity + Logarithmic Popularity Bias")
     
-    if results is not None:
-        cols = st.columns(3)
-        for i, (index, row) in enumerate(results.iterrows()):
-            with cols[i % 3]:
-                with st.container():
-                    st.markdown(f"#### {row['title']}")
-                    st.caption(f"🎭 {row['genres'].replace('|', ' • ')}")
-                    
-                    # Simulated match logic
-                    match = 99 - (i * 1.5)
-                    st.write(f"**Relevance:** {match:.1f}%")
-                    st.progress(match / 100)
-                    st.divider()
+    try:
+        df = load_and_prep_data()
+        tfidf_matrix = build_engine(df)
+    except Exception as e:
+        st.error(str(e))
+        return
+
+    # User Input Layer
+    movie_list = df['title'].values
+    selected_movie = st.selectbox(
+        "Search for a movie you love:", 
+        options=["-- Select a Movie --"] + list(movie_list),
+        index=0
+    )
+
+    # Dynamic Execution Trigger
+    if selected_movie and selected_movie != "-- Select a Movie --":
+        st.write(f"### Because you enjoyed **{selected_movie}**...")
+        
+        results = get_pro_recommendations(selected_movie, df, tfidf_matrix)
+        
+        if results is not None and not results.empty:
+            cols = st.columns(3)
+            for i, (_, row) in enumerate(results.iterrows()):
+                with cols[i % 3]:
+                    # Standard container layout bypassing unsupported border parameters
+                    with st.container():
+                        st.markdown(f"#### {row['title']}")
+                        
+                        # Format genre visual tags cleanly
+                        clean_genres = row['genres'].replace('|', ' • ')
+                        st.caption(f"🎭 {clean_genres}")
+                        
+                        # Visual representation of match strength
+                        match_score = 99.0 - (i * 1.2)
+                        st.write(f"**Relevance Match:** {match_score:.1f}%")
+                        st.progress(match_score / 100.0)
+                        st.divider()
+        else:
+            st.warning("No mathematically close neighbors found for this specific title in the current vector space.")
     else:
-        st.error("Model couldn't find a match for that title.")
+        st.info("👈 Select a title from the dropdown menu above to explore the latent space.")
+
+if __name__ == "__main__":
+    main()
