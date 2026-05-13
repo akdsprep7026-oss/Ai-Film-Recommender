@@ -23,14 +23,21 @@ st.markdown("""
 # --- STEP 1: DATA LOADING ---
 @st.cache_data
 def load_and_prep_data():
-    # Direct relative target path inside the repository runtime
-    target_file = "top_movies.csv"
+    # 1. Define both possible file locations
+    local_path = "top_movies.csv"
+    cloud_path = os.path.join("movie_recommender_project", "top_movies.csv")
     
-    if not os.path.exists(target_file):
+    # 2. Intelligently resolve the correct path based on the runtime environment
+    if os.path.exists(local_path):
+        target_file = local_path
+    elif os.path.exists(cloud_path):
+        target_file = cloud_path
+    else:
         raise FileNotFoundError(
-            f"CRITICAL: Dataset '{target_file}' missing from target container execution layer."
+            "CRITICAL: Dataset 'top_movies.csv' missing from both root and subfolder execution layers."
         )
             
+    # 3. Load the dataset cleanly
     df = pd.read_csv(target_file)
     
     # Cast attributes cleanly
