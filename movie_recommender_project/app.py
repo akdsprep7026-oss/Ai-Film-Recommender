@@ -23,11 +23,11 @@ st.markdown("""
 # --- STEP 1: DATA LOADING ---
 @st.cache_data
 def load_and_prep_data():
-    # 1. Define both possible file locations
+    # 1. Defining both possible file locations
     local_path = "top_movies.csv"
     cloud_path = os.path.join("movie_recommender_project", "top_movies.csv")
     
-    # 2. Intelligently resolve the correct path based on the runtime environment
+    # 2. Resolving the correct path based on the runtime environment
     if os.path.exists(local_path):
         target_file = local_path
     elif os.path.exists(cloud_path):
@@ -37,10 +37,10 @@ def load_and_prep_data():
             "CRITICAL: Dataset 'top_movies.csv' missing from both root and subfolder execution layers."
         )
             
-    # 3. Load the dataset cleanly
+    # 3. Loading the dataset 
     df = pd.read_csv(target_file)
     
-    # Cast attributes cleanly
+    # Casting attributes 
     df['title'] = df['title'].astype(str)
     df['genres'] = df['genres'].astype(str).fillna("Unknown")
     
@@ -72,7 +72,7 @@ def get_pro_recommendations(title, df, tfidf_matrix):
     except Exception:
         return None
 
-# --- MAIN GUI LAYER ---
+# --- MAIN GUI ---
 def main():
     st.title("🎬 AI Movie Discovery Engine")
     st.caption("Hybrid Recommender: TF-IDF Semantic Proximity + Logarithmic Popularity Bias")
