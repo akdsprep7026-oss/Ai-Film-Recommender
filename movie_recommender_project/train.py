@@ -61,7 +61,7 @@ candidate_movies_dataset = tf.data.Dataset.from_tensor_slices({
     "movie_genre": unique_movies_df["primary_genre"].values
 })
 
-# Complete explicit eviction of RAM allocations prior to graph initializations
+# Completing explicit eviction of RAM allocations prior to graph initializations
 del merged_df
 del ratings_df
 del movies_df
@@ -90,7 +90,7 @@ class BalancedItemTower(tf.keras.Model):
         title_emb = self.title_embedding(self.title_lookup(inputs["movie_title"]))
         genre_emb = self.genre_embedding(self.genre_lookup(inputs["movie_genre"]))
         
-        # Concat outputs a natively stable precision geometry: (None, 256)
+        # Concatinating outputs a natively stable precision geometry
         combined_vector = tf.concat([title_emb, genre_emb], axis=1)
         return tf.math.l2_normalize(combined_vector, axis=-1)
 
