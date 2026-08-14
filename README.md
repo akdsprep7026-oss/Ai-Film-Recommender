@@ -1,5 +1,5 @@
-﻿#Filmic: AI Film Recommendation Engine 
-# 🎬 Production-Grade AI Movie Discovery Engine
+﻿
+#Filmic: AI Film Recommendation Engine 
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)
 ![TensorFlow](https://img.shields.io/badge/TensorFlow-2.10-FF6F00?logo=tensorflow&logoColor=white)
